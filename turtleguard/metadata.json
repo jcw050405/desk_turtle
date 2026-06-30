@@ -1,0 +1,10 @@
+{
+  "name": "TurtleGuard",
+  "description": "IoT based forward head posture correction system with Web Serial API.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
