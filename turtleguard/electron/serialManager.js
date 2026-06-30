@@ -22,6 +22,7 @@ export class SerialManager {
       path: null,
       lastError: null,
     };
+    this.disconnectPromise = null;
   }
 
   async listPorts() {
@@ -140,27 +141,17 @@ export class SerialManager {
   }
 
   async disconnect() {
-    const port = this.port;
-    this.port = null;
-
-    if (port && port.isOpen) {
-      await new Promise((resolve) => {
-        port.close(() => {
-          resolve();
-        });
-      });
+    if (this.disconnectPromise) {
+      return this.disconnectPromise;
     }
 
-    this.status = {
-      connected: false,
-      path: null,
-      lastError: null,
-    };
+    this.disconnectPromise = this.performDisconnect();
 
-    return {
-      ok: true,
-      ...this.getStatus(),
-    };
+    try {
+      return await this.disconnectPromise;
+    } finally {
+      this.disconnectPromise = null;
+    }
   }
 
   async sendPostureState(state) {
@@ -243,6 +234,74 @@ export class SerialManager {
     return {
       ok: true,
       value,
+      ...this.getStatus(),
+    };
+  }
+
+  async performDisconnect() {
+    const port = this.port;
+
+    if (!port || !port.isOpen) {
+      if (this.port === port) {
+        this.port = null;
+      }
+
+      this.status = {
+        connected: false,
+        path: null,
+        lastError: null,
+      };
+
+      return {
+        ok: true,
+        ...this.getStatus(),
+      };
+    }
+
+    try {
+      await new Promise((resolve, reject) => {
+        port.close((error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          resolve();
+        });
+      });
+    } catch (error) {
+      const message = toErrorMessage(error);
+      const hasLiveHandle = Boolean(port.isOpen);
+
+      if (!hasLiveHandle && this.port === port) {
+        this.port = null;
+      }
+
+      this.status = {
+        connected: hasLiveHandle,
+        path: hasLiveHandle ? port.path ?? this.status.path : null,
+        lastError: message,
+      };
+
+      return {
+        ok: false,
+        message,
+        ...this.getStatus(),
+      };
+    }
+
+    if (this.port === port) {
+      this.port = null;
+    }
+
+    this.status = {
+      connected: false,
+      path: null,
+      lastError: null,
+    };
+
+    return {
+      ok: true,
       ...this.getStatus(),
     };
   }

@@ -6,6 +6,7 @@ import { SerialManager } from './electron/serialManager.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const serialManager = new SerialManager();
+let isQuittingAfterSerialCleanup = false;
 
 function registerIpcHandlers() {
   ipcMain.handle('serial:listPorts', async () => serialManager.listPorts());
@@ -75,13 +76,21 @@ app.whenReady().then(() => {
   });
 });
 
-app.on('before-quit', () => {
-  void serialManager.disconnect();
+app.on('before-quit', (event) => {
+  if (isQuittingAfterSerialCleanup) {
+    return;
+  }
+
+  event.preventDefault();
+
+  void (async () => {
+    await serialManager.disconnect();
+    isQuittingAfterSerialCleanup = true;
+    app.quit();
+  })();
 });
 
 app.on('window-all-closed', () => {
-  void serialManager.disconnect();
-
   if (process.platform !== 'darwin') {
     app.quit();
   }
