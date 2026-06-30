@@ -17,3 +17,18 @@ contextBridge.exposeInMainWorld('turtleSession', {
   end: (payload) => ipcRenderer.invoke('session:end', payload),
   getDraft: () => ipcRenderer.invoke('session:getDraft'),
 });
+
+contextBridge.exposeInMainWorld('turtleSystem', {
+  onSuspend: (callback) => {
+    if (typeof callback !== 'function') {
+      return () => {};
+    }
+
+    const listener = () => callback();
+    ipcRenderer.on('system:suspend', listener);
+
+    return () => {
+      ipcRenderer.removeListener('system:suspend', listener);
+    };
+  },
+});
