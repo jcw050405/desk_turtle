@@ -21,10 +21,6 @@ export function scorePort(port, lastSuccessfulPath) {
     return 100;
   }
 
-  if (lastSuccessfulPath && path === normalize(lastSuccessfulPath)) {
-    return 70;
-  }
-
   if (COMMON_USB_SERIAL_VENDOR_IDS.has(vendorId)) {
     return 80;
   }
@@ -32,10 +28,16 @@ export function scorePort(port, lastSuccessfulPath) {
   if (
     searchText.includes('ch340') ||
     searchText.includes('ch341') ||
+    searchText.includes('cp210') ||
+    searchText.includes('ftdi') ||
     searchText.includes('usb serial') ||
     searchText.includes('usb-serial')
   ) {
     return 75;
+  }
+
+  if (lastSuccessfulPath && path === normalize(lastSuccessfulPath)) {
+    return 70;
   }
 
   if (path.startsWith('com') || path.includes('/dev/tty') || path.includes('/dev/cu')) {
