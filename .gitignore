@@ -33,6 +33,10 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Local git worktrees
+.worktrees
+.worktrees/
+
 # Electron artifacts
 *.asar
 *.blockmap
