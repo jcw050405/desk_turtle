@@ -1,5 +1,16 @@
 const OFFICIAL_ARDUINO_VENDOR_IDS = new Set(['2341', '2A03']);
 const COMMON_USB_SERIAL_VENDOR_IDS = new Set(['1A86', '10C4', '0403']);
+const TEXT_DESCRIPTOR_FIELDS = [
+  'path',
+  'manufacturer',
+  'vendorId',
+  'productId',
+  'product',
+  'serialNumber',
+  'pnpId',
+  'friendlyName',
+  'locationId',
+];
 
 function normalize(value) {
   return String(value ?? '').trim().toLowerCase();
@@ -8,10 +19,7 @@ function normalize(value) {
 export function scorePort(port, lastSuccessfulPath) {
   const path = normalize(port.path);
   const vendorId = normalize(port.vendorId).toUpperCase();
-  const manufacturer = normalize(port.manufacturer);
-  const productId = normalize(port.productId);
-  const serialNumber = normalize(port.serialNumber);
-  const searchText = `${path} ${manufacturer} ${productId} ${serialNumber}`;
+  const searchText = TEXT_DESCRIPTOR_FIELDS.map((field) => normalize(port[field])).join(' ');
 
   if (OFFICIAL_ARDUINO_VENDOR_IDS.has(vendorId)) {
     return 100;

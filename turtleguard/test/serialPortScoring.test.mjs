@@ -75,6 +75,19 @@ test('scorePort keeps known chip metadata stronger than last successful path', (
   assert.equal(scorePort(port, 'COM6'), 75);
 });
 
+test('scorePort recognizes common adapter text from additional descriptor fields', () => {
+  const port = {
+    path: 'COM11',
+    vendorId: '9999',
+    manufacturer: 'QinHeng Electronics',
+    friendlyName: 'USB-SERIAL CH340 (COM11)',
+    pnpId: 'USB\\VID_1A86&PID_7523\\5&1111111&0&3',
+    locationId: 'Port_#0003.Hub_#0001',
+  };
+
+  assert.equal(scorePort(port, null), 75);
+});
+
 test('sortPortsByArduinoLikelihood orders highest score first', () => {
   const ports = [
     { path: 'COM9', manufacturer: 'Bluetooth' },
@@ -85,4 +98,17 @@ test('sortPortsByArduinoLikelihood orders highest score first', () => {
   const sorted = sortPortsByArduinoLikelihood(ports, null);
 
   assert.deepEqual(sorted.map((entry) => entry.path), ['COM3', 'COM5', 'COM9']);
+});
+
+test('sortPortsByArduinoLikelihood uses path order as a deterministic tie-break', () => {
+  const ports = [
+    { path: 'COM9', manufacturer: 'Unknown Device' },
+    { path: 'COM2', manufacturer: 'Unknown Device' },
+    { path: 'COM11', manufacturer: 'Unknown Device' },
+  ];
+
+  const sorted = sortPortsByArduinoLikelihood(ports, null);
+
+  assert.deepEqual(sorted.map((entry) => entry.path), ['COM11', 'COM2', 'COM9']);
+  assert.deepEqual(sorted.map((entry) => entry.score), [20, 20, 20]);
 });
