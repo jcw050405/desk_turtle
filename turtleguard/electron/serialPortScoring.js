@@ -13,16 +13,16 @@ export function scorePort(port, lastSuccessfulPath) {
   const serialNumber = normalize(port.serialNumber);
   const searchText = `${path} ${manufacturer} ${productId} ${serialNumber}`;
 
-  if (lastSuccessfulPath && path === normalize(lastSuccessfulPath)) {
-    return 70;
-  }
-
   if (OFFICIAL_ARDUINO_VENDOR_IDS.has(vendorId)) {
     return 100;
   }
 
   if (searchText.includes('arduino')) {
-    return 95;
+    return 100;
+  }
+
+  if (lastSuccessfulPath && path === normalize(lastSuccessfulPath)) {
+    return 70;
   }
 
   if (COMMON_USB_SERIAL_VENDOR_IDS.has(vendorId)) {
