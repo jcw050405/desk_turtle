@@ -5,6 +5,8 @@ node_modules/
 # Build outputs
 dist/
 **/dist/
+renderer-dist/
+**/renderer-dist/
 out/
 **/out/
 release/

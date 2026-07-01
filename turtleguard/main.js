@@ -45,7 +45,7 @@ function createWindow() {
     win.webContents.openDevTools();
   } else {
     // In production, load the built index.html
-    win.loadFile(path.join(__dirname, 'dist/index.html'));
+    win.loadFile(path.join(__dirname, 'renderer-dist/index.html'));
   }
 }
 
