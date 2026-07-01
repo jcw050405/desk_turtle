@@ -7,6 +7,8 @@ export type TurtlePostureState =
   | 'PAUSED'
   | 'ERROR';
 
+export type TurtleHardwarePostureState = 'GOOD' | 'BAD';
+
 export type TurtleSerialPortInfo = {
   path: string;
   manufacturer?: string;
@@ -29,7 +31,7 @@ export type TurtleSerialStatus = {
 };
 
 export type TurtleSerialResult<TValue = string> = TurtleSerialStatus & {
-  ok?: boolean;
+  ok: boolean;
   value?: TValue;
   message?: string;
   reason?: string;
@@ -43,7 +45,7 @@ export type TurtleSerialApi = {
   connect: (path: string) => Promise<TurtleSerialResult>;
   disconnect: () => Promise<TurtleSerialResult>;
   getStatus: () => Promise<TurtleSerialStatus>;
-  sendPostureState: (state: TurtlePostureState) => Promise<TurtleSerialResult>;
+  sendPostureState: (state: TurtleHardwarePostureState) => Promise<TurtleSerialResult>;
   testServo: (position: string) => Promise<TurtleSerialResult>;
 };
 

@@ -1,5 +1,5 @@
 import type {
-  TurtlePostureState,
+  TurtleHardwarePostureState,
   TurtleSerialApi,
   TurtleSerialPortInfo,
   TurtleSerialResult,
@@ -63,7 +63,7 @@ export const serialClient = {
     return (await getSerialApi()?.getStatus?.()) ?? getUnavailableStatus();
   },
 
-  async sendPostureState(state: TurtlePostureState): Promise<TurtleSerialResult> {
+  async sendPostureState(state: TurtleHardwarePostureState): Promise<TurtleSerialResult> {
     return (
       (await getSerialApi()?.sendPostureState?.(state)) ??
       getUnavailableResult({
