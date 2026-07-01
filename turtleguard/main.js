@@ -2,13 +2,14 @@ import { app, BrowserWindow, ipcMain, powerMonitor } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { SerialManager } from './electron/serialManager.js';
+import { SessionStore } from './electron/sessionStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const serialManager = new SerialManager();
 let isQuittingAfterSerialCleanup = false;
 
-function registerIpcHandlers() {
+function registerIpcHandlers(sessionStore) {
   ipcMain.handle('serial:listPorts', async () => serialManager.listPorts());
   ipcMain.handle('serial:autoConnect', async () => serialManager.autoConnect());
   ipcMain.handle('serial:connect', async (_event, portPath) => serialManager.connect(portPath));
@@ -18,17 +19,10 @@ function registerIpcHandlers() {
     serialManager.sendPostureState(state)
   );
   ipcMain.handle('serial:testServo', async (_event, position) => serialManager.testServo(position));
-
-  const notImplemented = async () => ({
-    ok: false,
-    error: 'not implemented',
-  });
-
-  ipcMain.handle('session:start', notImplemented);
-  ipcMain.handle('session:pause', notImplemented);
-  ipcMain.handle('session:resume', notImplemented);
-  ipcMain.handle('session:end', notImplemented);
-  ipcMain.handle('session:getDraft', notImplemented);
+  ipcMain.handle('session:list', async () => sessionStore.list());
+  ipcMain.handle('session:saveDraft', async (_event, session) => sessionStore.saveDraft(session));
+  ipcMain.handle('session:finish', async (_event, session) => sessionStore.finish(session));
+  ipcMain.handle('session:recoverOpen', async () => sessionStore.recoverOpen());
 }
 
 function createWindow() {
@@ -56,7 +50,9 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  registerIpcHandlers();
+  const sessionStore = new SessionStore(app.getPath('userData'));
+
+  registerIpcHandlers(sessionStore);
   createWindow();
 
   powerMonitor.on('suspend', () => {

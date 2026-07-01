@@ -49,12 +49,25 @@ export type TurtleSerialApi = {
   testServo: (position: string) => Promise<TurtleSerialResult>;
 };
 
+export type LocalSessionRecord = {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  good_posture_seconds: number;
+  bad_posture_seconds: number;
+  away_seconds: number;
+  warning_count: number;
+  ended_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  sync_status: 'local_only' | 'pending_sync' | 'synced';
+};
+
 export type TurtleSessionApi = {
-  start: (payload?: unknown) => Promise<unknown>;
-  pause: (payload?: unknown) => Promise<unknown>;
-  resume: (payload?: unknown) => Promise<unknown>;
-  end: (payload?: unknown) => Promise<unknown>;
-  getDraft: () => Promise<unknown>;
+  list: () => Promise<LocalSessionRecord[]>;
+  saveDraft: (payload: LocalSessionRecord) => Promise<LocalSessionRecord>;
+  finish: (payload: Partial<LocalSessionRecord> & Pick<LocalSessionRecord, 'id'>) => Promise<LocalSessionRecord | null>;
+  recoverOpen: () => Promise<LocalSessionRecord[]>;
 };
 
 export type TurtleSystemApi = {

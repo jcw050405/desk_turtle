@@ -11,11 +11,10 @@ contextBridge.exposeInMainWorld('turtleSerial', {
 });
 
 contextBridge.exposeInMainWorld('turtleSession', {
-  start: (payload) => ipcRenderer.invoke('session:start', payload),
-  pause: (payload) => ipcRenderer.invoke('session:pause', payload),
-  resume: (payload) => ipcRenderer.invoke('session:resume', payload),
-  end: (payload) => ipcRenderer.invoke('session:end', payload),
-  getDraft: () => ipcRenderer.invoke('session:getDraft'),
+  list: () => ipcRenderer.invoke('session:list'),
+  saveDraft: (payload) => ipcRenderer.invoke('session:saveDraft', payload),
+  finish: (payload) => ipcRenderer.invoke('session:finish', payload),
+  recoverOpen: () => ipcRenderer.invoke('session:recoverOpen'),
 });
 
 contextBridge.exposeInMainWorld('turtleSystem', {
