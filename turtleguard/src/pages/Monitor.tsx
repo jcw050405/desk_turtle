@@ -279,7 +279,12 @@ export default function Monitor() {
 
   const startCalibration = () => {
     setAppState('CALIBRATING');
-    postureDetector.startCalibration(() => {
+    postureDetector.startCalibration((result) => {
+      if (!result.ok) {
+        setAppState('IDLE');
+        setCameraError(true);
+        return;
+      }
       setAppState('ACTIVE');
       setIsBossMode(true); // Automatically enter Boss Mode when active
     });
