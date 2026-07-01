@@ -1,37 +1,6 @@
 /// <reference types="w3c-web-serial" />
 
-type TurtleSerialStatus = {
-  connected: boolean;
-  path: string | null;
-  lastError: string | null;
-};
-
-type TurtleSerialResult = TurtleSerialStatus & {
-  ok: boolean;
-  message?: string;
-  value?: string;
-};
-
-type TurtleSerialApi = {
-  listPorts: () => Promise<unknown[]>;
-  autoConnect: () => Promise<TurtleSerialResult>;
-  connect: (path: string) => Promise<TurtleSerialResult>;
-  disconnect: () => Promise<TurtleSerialResult>;
-  getStatus: () => Promise<TurtleSerialStatus>;
-  sendPostureState: (state: 'BAD' | 'GOOD') => Promise<TurtleSerialResult>;
-  testServo: (position: string) => Promise<TurtleSerialResult>;
-};
-
-type TurtleSystemApi = {
-  onSuspend: (callback: () => void) => () => void;
-};
-
-declare global {
-  interface Window {
-    turtleSerial?: TurtleSerialApi;
-    turtleSystem?: TurtleSystemApi;
-  }
-}
+import { serialClient } from './serialClient';
 
 export class WebSerialService {
   private isConnected = false;
@@ -100,13 +69,8 @@ export class WebSerialService {
       return true;
     }
 
-    const turtleSerial = typeof window !== 'undefined' ? window.turtleSerial : undefined;
-    if (!turtleSerial?.autoConnect) {
-      return false;
-    }
-
     try {
-      const status = await turtleSerial.autoConnect();
+      const status = await serialClient.autoConnect();
 
       if (status.connected) {
         this.markConnected();
@@ -123,9 +87,7 @@ export class WebSerialService {
 
   async disconnect() {
     try {
-      if (typeof window !== 'undefined' && window.turtleSerial?.disconnect) {
-        await window.turtleSerial.disconnect();
-      }
+      await serialClient.disconnect();
     } catch (error) {
       console.warn('Error closing serial connection', error);
     } finally {
@@ -146,13 +108,8 @@ export class WebSerialService {
       return;
     }
 
-    const turtleSerial = typeof window !== 'undefined' ? window.turtleSerial : undefined;
-    if (!turtleSerial?.sendPostureState) {
-      return;
-    }
-
     try {
-      const result = await turtleSerial.sendPostureState(isBadPosture ? 'BAD' : 'GOOD');
+      const result = await serialClient.sendPostureState(isBadPosture ? 'BAD' : 'GOOD');
 
       if (result.ok && result.connected) {
         this.lastSignal = isBadPosture;
