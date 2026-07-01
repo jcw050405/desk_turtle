@@ -6,6 +6,12 @@ export interface PostureResult {
   detection: Detection;
 }
 
+export interface CalibrationResult {
+  ok: boolean;
+  baselineScale?: number;
+  reason?: 'NO_FACE_SAMPLES';
+}
+
 export class PostureDetector {
   private faceDetector: FaceDetector | null = null;
   private baselineScale: number | null = null;
@@ -15,7 +21,7 @@ export class PostureDetector {
   private isCalibrating = false;
   private calibrationSamplesScale: number[] = [];
   private calibrationSamplesY: number[] = [];
-  private onCalibrationComplete?: (baselineScale: number) => void;
+  private onCalibrationComplete?: (result: CalibrationResult) => void;
 
   async initialize() {
     const vision = await FilesetResolver.forVisionTasks(
@@ -32,7 +38,7 @@ export class PostureDetector {
     });
   }
 
-  startCalibration(onComplete: (baselineScale: number) => void) {
+  startCalibration(onComplete: (result: CalibrationResult) => void) {
     this.isCalibrating = true;
     this.calibrationSamplesScale = [];
     this.calibrationSamplesY = [];
@@ -42,16 +48,19 @@ export class PostureDetector {
       if (this.calibrationSamplesScale.length > 0) {
         this.baselineScale = this.calibrationSamplesScale.reduce((a, b) => a + b, 0) / this.calibrationSamplesScale.length;
         this.baselineY = this.calibrationSamplesY.reduce((a, b) => a + b, 0) / this.calibrationSamplesY.length;
+        this.emaScale = this.baselineScale;
+        if (this.onCalibrationComplete) {
+          this.onCalibrationComplete({ ok: true, baselineScale: this.baselineScale });
+        }
+        return;
       } else {
-        // Fallback to prevent NaN if face wasn't detected during calibration
-        this.baselineScale = 100;
-        this.baselineY = 0;
+        this.baselineScale = null;
+        this.baselineY = null;
+        this.emaScale = null;
       }
-      
-      this.emaScale = this.baselineScale;
-      
+
       if (this.onCalibrationComplete) {
-        this.onCalibrationComplete(this.baselineScale);
+        this.onCalibrationComplete({ ok: false, reason: 'NO_FACE_SAMPLES' });
       }
     }, 3000); // 3 seconds calibration
   }
