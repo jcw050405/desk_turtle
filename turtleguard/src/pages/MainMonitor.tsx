@@ -4,6 +4,7 @@ import { sessionClient, type LocalSessionRecord } from '../services/sessionClien
 import { serialClient } from '../services/serialClient';
 import { postureDetector } from '../services/poseDetection';
 import { settingsClient } from '../services/settingsClient';
+import { syncEndedSession } from '../services/sessionSync';
 import {
   DEFAULT_POSTURE_STANDARD,
   getEffectivePostureStandard,
@@ -76,6 +77,7 @@ export default function MainMonitor() {
   const [postureStandard, setPostureStandard] =
     useState<PostureStandard>(DEFAULT_POSTURE_STANDARD);
   const [rankingMode, setRankingMode] = useState(false);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -85,11 +87,11 @@ export default function MainMonitor() {
   const effectivePostureStandard = getEffectivePostureStandard(postureStandard, rankingMode);
   const sessionMetadata = useMemo(
     () => ({
-      groupId: null,
+      groupId: rankingMode ? activeGroupId : null,
       rankingMode,
       postureStandard,
     }),
-    [postureStandard, rankingMode],
+    [activeGroupId, postureStandard, rankingMode],
   );
 
   const statusLabel: Record<PostureState, string> = useMemo(
@@ -123,6 +125,7 @@ export default function MainMonitor() {
   useEffect(() => {
     void settingsClient.get().then((settings) => {
       setPostureStandard(settings.posture_standard);
+      setActiveGroupId(settings.last_selected_group_id);
     });
   }, []);
 
@@ -218,16 +221,16 @@ export default function MainMonitor() {
 
     cleanupCamera();
     await serialClient.sendPostureState('GOOD');
-    await sessionClient.finish(
-      makeSession(
-        runtime,
-        sessionId,
-        startedAt,
-        new Date().toISOString(),
-        'user_stopped',
-        sessionMetadata,
-      ),
+    const finished = makeSession(
+      runtime,
+      sessionId,
+      startedAt,
+      new Date().toISOString(),
+      'user_stopped',
+      sessionMetadata,
     );
+    const synced = await syncEndedSession(finished, rankingMode, postureStandard);
+    await sessionClient.finish(synced);
 
     setSessionId(null);
     setStartedAt(null);
@@ -326,15 +329,23 @@ export default function MainMonitor() {
       const endedAt = new Date().toISOString();
       cleanupCamera();
       void serialClient.sendPostureState('GOOD');
-      void sessionClient.finish(
-        makeSession(runtime, sessionId, startedAt, endedAt, 'system_sleep', sessionMetadata),
+      const finished = makeSession(
+        runtime,
+        sessionId,
+        startedAt,
+        endedAt,
+        'system_sleep',
+        sessionMetadata,
+      );
+      void syncEndedSession(finished, rankingMode, postureStandard).then((synced) =>
+        sessionClient.finish(synced),
       );
       setSessionId(null);
       setStartedAt(null);
       setRuntime(initialPostureRuntime());
       setMessage('컴퓨터 절전 신호로 세션을 안전하게 종료했습니다.');
     });
-  }, [cleanupCamera, runtime, sessionId, sessionMetadata, startedAt]);
+  }, [cleanupCamera, postureStandard, rankingMode, runtime, sessionId, sessionMetadata, startedAt]);
 
   return (
     <section className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.6fr)]">

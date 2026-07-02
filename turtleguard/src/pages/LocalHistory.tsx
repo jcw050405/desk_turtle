@@ -20,7 +20,7 @@ export default function LocalHistory() {
       <header>
         <h1 className="text-2xl font-bold text-[#2C2C2A]">로컬 기록</h1>
         <p className="text-sm text-[#2C2C2A]/60">
-          이 기록은 현재 컴퓨터에만 저장됩니다.
+          세션 기록은 이 컴퓨터에 먼저 저장되고, 소셜 설정이 있으면 동기화 상태가 함께 표시됩니다.
         </p>
       </header>
 
@@ -36,6 +36,7 @@ export default function LocalHistory() {
                 <th className="p-3">나쁜 자세</th>
                 <th className="p-3">자리 비움</th>
                 <th className="p-3">경고</th>
+                <th className="p-3">Sync</th>
                 <th className="p-3">상태</th>
               </tr>
             </thead>
@@ -47,7 +48,10 @@ export default function LocalHistory() {
                   <td className="p-3">{formatSeconds(session.bad_posture_seconds)}</td>
                   <td className="p-3">{formatSeconds(session.away_seconds)}</td>
                   <td className="p-3">{session.warning_count}</td>
-                  <td className="p-3">{session.ended_at ? session.ended_reason : '복구 필요'}</td>
+                  <td className="p-3">{session.sync_status ?? 'local_only'}</td>
+                  <td className="p-3">
+                    {session.ended_at ? (session.ended_reason ?? 'ended') : '복구 필요'}
+                  </td>
                 </tr>
               ))}
             </tbody>
