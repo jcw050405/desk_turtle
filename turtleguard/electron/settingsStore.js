@@ -13,7 +13,15 @@ const DEFAULT_SETTINGS = Object.freeze({
   posture_standard: 'default',
   last_selected_group_id: null,
   sync_enabled: true,
+  profile_id: null,
+  nickname: null,
+  active_group_name: null,
+  active_group_invite_code: null,
 });
+
+function normalizeOptionalString(value) {
+  return typeof value === 'string' && value.trim() ? value : null;
+}
 
 function normalizeSettings(value) {
   const input = value && typeof value === 'object' ? value : {};
@@ -23,10 +31,13 @@ function normalizeSettings(value) {
 
   return {
     posture_standard: postureStandard,
-    last_selected_group_id:
-      typeof input.last_selected_group_id === 'string' ? input.last_selected_group_id : null,
+    last_selected_group_id: normalizeOptionalString(input.last_selected_group_id),
     sync_enabled:
       typeof input.sync_enabled === 'boolean' ? input.sync_enabled : DEFAULT_SETTINGS.sync_enabled,
+    profile_id: normalizeOptionalString(input.profile_id),
+    nickname: normalizeOptionalString(input.nickname),
+    active_group_name: normalizeOptionalString(input.active_group_name),
+    active_group_invite_code: normalizeOptionalString(input.active_group_invite_code),
   };
 }
 

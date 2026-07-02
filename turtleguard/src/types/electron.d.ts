@@ -88,6 +88,10 @@ export interface TurtleSettings {
   posture_standard: TurtlePostureStandard;
   last_selected_group_id: string | null;
   sync_enabled: boolean;
+  profile_id: string | null;
+  nickname: string | null;
+  active_group_name: string | null;
+  active_group_invite_code: string | null;
 }
 
 export interface TurtleSettingsApi {

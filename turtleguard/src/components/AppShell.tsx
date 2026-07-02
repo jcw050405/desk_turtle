@@ -1,15 +1,19 @@
 import { useState } from 'react';
-import { Activity, Cable, History } from 'lucide-react';
+import { Activity, Cable, History, Trophy, Users } from 'lucide-react';
 import MainMonitor from '../pages/MainMonitor';
 import HardwareSettings from '../pages/HardwareSettings';
 import LocalHistory from '../pages/LocalHistory';
+import SocialSetup from '../pages/SocialSetup';
+import GroupRanking from '../pages/GroupRanking';
 
-type Tab = 'monitor' | 'hardware' | 'history';
+type Tab = 'monitor' | 'hardware' | 'history' | 'social' | 'ranking';
 
 const tabs = [
   { id: 'monitor' as const, label: '관찰 화면', icon: Activity },
   { id: 'hardware' as const, label: '하드웨어', icon: Cable },
   { id: 'history' as const, label: '로컬 기록', icon: History },
+  { id: 'social' as const, label: '소셜', icon: Users },
+  { id: 'ranking' as const, label: '랭킹', icon: Trophy },
 ];
 
 export default function AppShell() {
@@ -30,6 +34,7 @@ export default function AppShell() {
             {tabs.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
+                type="button"
                 onClick={() => setTab(id)}
                 className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left ${
                   tab === id ? 'bg-[#2E7D63]/10 text-[#2E7D63]' : 'hover:bg-[#2E7D63]/10'
@@ -46,6 +51,8 @@ export default function AppShell() {
           {tab === 'monitor' && <MainMonitor />}
           {tab === 'hardware' && <HardwareSettings />}
           {tab === 'history' && <LocalHistory />}
+          {tab === 'social' && <SocialSetup />}
+          {tab === 'ranking' && <GroupRanking />}
         </main>
       </div>
     </div>

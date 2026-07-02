@@ -5,6 +5,10 @@ export const DEFAULT_SETTINGS: TurtleSettings = {
   posture_standard: DEFAULT_POSTURE_STANDARD,
   last_selected_group_id: null,
   sync_enabled: true,
+  profile_id: null,
+  nickname: null,
+  active_group_name: null,
+  active_group_invite_code: null,
 };
 
 function getSettingsApi() {
