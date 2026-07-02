@@ -1,4 +1,4 @@
-import { getEffectivePostureStandard, type PostureStandard } from './postureStandard';
+import { getEffectivePostureStandard, type PostureStandard } from './postureStandard.ts';
 import type { LocalSessionRecord } from './sessionClient';
 
 export interface StudySessionUploadPayload {

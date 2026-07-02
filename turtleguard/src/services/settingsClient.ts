@@ -1,4 +1,4 @@
-import { DEFAULT_POSTURE_STANDARD, normalizePostureStandard } from './postureStandard';
+import { DEFAULT_POSTURE_STANDARD, normalizePostureStandard } from './postureStandard.ts';
 import type { TurtleSettings } from '../types/electron';
 
 export const DEFAULT_SETTINGS: TurtleSettings = {

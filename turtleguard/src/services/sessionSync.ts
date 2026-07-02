@@ -1,8 +1,8 @@
-import { buildStudySessionPayload } from './sessionPayload';
-import { settingsClient } from './settingsClient';
-import { socialClient } from './socialClient';
-import type { LocalSessionRecord } from './sessionClient';
-import type { PostureStandard } from './postureStandard';
+import { buildStudySessionPayload } from './sessionPayload.ts';
+import { settingsClient } from './settingsClient.ts';
+import { socialClient } from './socialClient.ts';
+import type { LocalSessionRecord } from './sessionClient.ts';
+import type { PostureStandard } from './postureStandard.ts';
 
 export async function syncEndedSession(
   session: LocalSessionRecord,

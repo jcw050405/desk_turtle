@@ -1,5 +1,5 @@
-import { isSupabaseConfigured, supabase } from './supabase';
-import type { StudySessionUploadPayload } from './sessionPayload';
+import { isSupabaseConfigured, supabase } from './supabase.ts';
+import type { StudySessionUploadPayload } from './sessionPayload.ts';
 
 export interface TurtleProfile {
   id: string;
