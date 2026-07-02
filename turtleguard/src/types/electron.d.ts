@@ -60,11 +60,14 @@ export type LocalSessionRecord = {
   id: string;
   started_at: string;
   ended_at: string | null;
+  group_id?: string | null;
   good_posture_seconds: number;
   bad_posture_seconds: number;
   away_seconds: number;
   warning_count: number;
   ended_reason: string | null;
+  ranking_mode?: boolean;
+  posture_standard?: TurtlePostureStandard;
   created_at: string;
   updated_at: string;
   sync_status: 'local_only' | 'pending_sync' | 'synced';

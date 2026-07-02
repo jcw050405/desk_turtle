@@ -25,6 +25,12 @@ const PERFORMANCE_INTERVAL_MS: Record<PerformanceMode, number> = {
   accuracy: 300,
 };
 
+interface SessionMetadata {
+  groupId: string | null;
+  rankingMode: boolean;
+  postureStandard: PostureStandard;
+}
+
 function formatSeconds(seconds: number) {
   const m = Math.floor(seconds / 60).toString().padStart(2, '0');
   const s = Math.floor(seconds % 60).toString().padStart(2, '0');
@@ -37,17 +43,24 @@ function makeSession(
   startedAt: string,
   endedAt: string | null,
   endedReason: string | null,
+  metadata: SessionMetadata,
 ): LocalSessionRecord {
   const now = new Date().toISOString();
   return {
     id,
     started_at: startedAt,
     ended_at: endedAt,
+    group_id: metadata.groupId,
     good_posture_seconds: runtime.counters.good_posture_seconds,
     bad_posture_seconds: runtime.counters.bad_posture_seconds,
     away_seconds: runtime.counters.away_seconds,
     warning_count: runtime.counters.warning_count,
     ended_reason: endedReason,
+    ranking_mode: metadata.rankingMode,
+    posture_standard: getEffectivePostureStandard(
+      metadata.postureStandard,
+      metadata.rankingMode,
+    ),
     created_at: startedAt,
     updated_at: now,
     sync_status: 'local_only',
@@ -70,6 +83,14 @@ export default function MainMonitor() {
   const lastProcessTimeRef = useRef(0);
   const intervalRef = useRef<number | null>(null);
   const effectivePostureStandard = getEffectivePostureStandard(postureStandard, rankingMode);
+  const sessionMetadata = useMemo(
+    () => ({
+      groupId: null,
+      rankingMode,
+      postureStandard,
+    }),
+    [postureStandard, rankingMode],
+  );
 
   const statusLabel: Record<PostureState, string> = useMemo(
     () => ({
@@ -150,7 +171,9 @@ export default function MainMonitor() {
     setStartedAt(start);
     setRuntime(initial);
     setMessage('카메라를 준비하고 기준 자세를 측정합니다.');
-    await sessionClient.saveDraft(makeSession(initialPostureRuntime(), id, start, null, null));
+    await sessionClient.saveDraft(
+      makeSession(initialPostureRuntime(), id, start, null, null, sessionMetadata),
+    );
     await serialClient.sendPostureState('GOOD');
 
     try {
@@ -196,7 +219,14 @@ export default function MainMonitor() {
     cleanupCamera();
     await serialClient.sendPostureState('GOOD');
     await sessionClient.finish(
-      makeSession(runtime, sessionId, startedAt, new Date().toISOString(), 'user_stopped'),
+      makeSession(
+        runtime,
+        sessionId,
+        startedAt,
+        new Date().toISOString(),
+        'user_stopped',
+        sessionMetadata,
+      ),
     );
 
     setSessionId(null);
@@ -271,7 +301,9 @@ export default function MainMonitor() {
     const id = window.setInterval(() => {
       setRuntime((current) => {
         const next = addElapsedSecond(current);
-        void sessionClient.saveDraft(makeSession(next, sessionId, startedAt, null, null));
+        void sessionClient.saveDraft(
+          makeSession(next, sessionId, startedAt, null, null, sessionMetadata),
+        );
         return next;
       });
     }, 1000);
@@ -279,7 +311,7 @@ export default function MainMonitor() {
     intervalRef.current = id;
 
     return () => window.clearInterval(id);
-  }, [sessionId, startedAt]);
+  }, [sessionId, sessionMetadata, startedAt]);
 
   useEffect(() => {
     if (!window.turtleSystem) {
@@ -294,13 +326,15 @@ export default function MainMonitor() {
       const endedAt = new Date().toISOString();
       cleanupCamera();
       void serialClient.sendPostureState('GOOD');
-      void sessionClient.finish(makeSession(runtime, sessionId, startedAt, endedAt, 'system_sleep'));
+      void sessionClient.finish(
+        makeSession(runtime, sessionId, startedAt, endedAt, 'system_sleep', sessionMetadata),
+      );
       setSessionId(null);
       setStartedAt(null);
       setRuntime(initialPostureRuntime());
       setMessage('컴퓨터 절전 신호로 세션을 안전하게 종료했습니다.');
     });
-  }, [cleanupCamera, runtime, sessionId, startedAt]);
+  }, [cleanupCamera, runtime, sessionId, sessionMetadata, startedAt]);
 
   return (
     <section className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.6fr)]">
