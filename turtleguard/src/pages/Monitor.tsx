@@ -6,11 +6,28 @@ import { useGSAP } from '@gsap/react';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { serialService } from '../services/webSerial';
 import { postureDetector } from '../services/poseDetection';
-import { supabase, LeaderboardEntry, fetchTopRankings, subscribeToLeaderboard, saveLeaderboardScore } from '../services/supabase';
 import { NormalizedLandmark } from '@mediapipe/tasks-vision';
 import { Preloader, CustomCursor, useMagnetic, useTilt } from '../components/Interactive';
 
 gsap.registerPlugin(ScrollTrigger);
+
+interface LeaderboardEntry {
+  id: string;
+  username: string;
+  score: number;
+}
+
+function subscribeToLeaderboard(_onUpdate: () => void): () => void {
+  return () => {};
+}
+
+async function fetchTopRankings(_limit = 5): Promise<LeaderboardEntry[]> {
+  return [];
+}
+
+async function saveLeaderboardScore(
+  _entry: Omit<LeaderboardEntry, 'id'> & { good_time: number; bad_time: number },
+): Promise<void> {}
 
 export default function Monitor() {
   const videoRef = useRef<HTMLVideoElement>(null);
