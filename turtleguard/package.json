@@ -2,7 +2,7 @@
   "name": "turtleguard",
   "productName": "TurtleGuard",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A desktop posture monitor that connects camera-based turtle neck detection with Arduino hardware feedback.",
   "author": "jcw050405 <jcw050405@postech.ac.kr>",
   "type": "module",
