@@ -3,13 +3,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { SerialManager } from './electron/serialManager.js';
 import { SessionStore } from './electron/sessionStore.js';
+import { SettingsStore } from './electron/settingsStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const serialManager = new SerialManager();
 let isQuittingAfterSerialCleanup = false;
 
-function registerIpcHandlers(sessionStore) {
+function registerIpcHandlers(sessionStore, settingsStore) {
   ipcMain.handle('serial:listPorts', async () => serialManager.listPorts());
   ipcMain.handle('serial:autoConnect', async () => serialManager.autoConnect());
   ipcMain.handle('serial:connect', async (_event, portPath) => serialManager.connect(portPath));
@@ -23,6 +24,8 @@ function registerIpcHandlers(sessionStore) {
   ipcMain.handle('session:saveDraft', async (_event, session) => sessionStore.saveDraft(session));
   ipcMain.handle('session:finish', async (_event, session) => sessionStore.finish(session));
   ipcMain.handle('session:recoverOpen', async () => sessionStore.recoverOpen());
+  ipcMain.handle('settings:get', async () => settingsStore.get());
+  ipcMain.handle('settings:update', async (_event, patch) => settingsStore.update(patch));
 }
 
 function createWindow() {
@@ -51,8 +54,9 @@ function createWindow() {
 
 app.whenReady().then(() => {
   const sessionStore = new SessionStore(app.getPath('userData'));
+  const settingsStore = new SettingsStore(app.getPath('userData'));
 
-  registerIpcHandlers(sessionStore);
+  registerIpcHandlers(sessionStore, settingsStore);
   createWindow();
 
   powerMonitor.on('suspend', () => {

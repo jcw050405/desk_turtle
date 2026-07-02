@@ -9,6 +9,13 @@ export type TurtlePostureState =
 
 export type TurtleHardwarePostureState = 'GOOD' | 'BAD';
 
+export type TurtlePostureStandard =
+  | 'very_sensitive'
+  | 'sensitive'
+  | 'default'
+  | 'relaxed'
+  | 'very_relaxed';
+
 export type TurtleSerialPortInfo = {
   path: string;
   manufacturer?: string;
@@ -74,10 +81,22 @@ export type TurtleSystemApi = {
   onSuspend: (callback: () => void) => () => void;
 };
 
+export interface TurtleSettings {
+  posture_standard: TurtlePostureStandard;
+  last_selected_group_id: string | null;
+  sync_enabled: boolean;
+}
+
+export interface TurtleSettingsApi {
+  get(): Promise<TurtleSettings>;
+  update(patch: Partial<TurtleSettings>): Promise<TurtleSettings>;
+}
+
 declare global {
   interface Window {
     turtleSerial?: TurtleSerialApi;
     turtleSession?: TurtleSessionApi;
+    turtleSettings?: TurtleSettingsApi;
     turtleSystem?: TurtleSystemApi;
   }
 }

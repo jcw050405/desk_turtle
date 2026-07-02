@@ -17,6 +17,11 @@ contextBridge.exposeInMainWorld('turtleSession', {
   recoverOpen: () => ipcRenderer.invoke('session:recoverOpen'),
 });
 
+contextBridge.exposeInMainWorld('turtleSettings', {
+  get: () => ipcRenderer.invoke('settings:get'),
+  update: (patch) => ipcRenderer.invoke('settings:update', patch),
+});
+
 contextBridge.exposeInMainWorld('turtleSystem', {
   onSuspend: (callback) => {
     if (typeof callback !== 'function') {
