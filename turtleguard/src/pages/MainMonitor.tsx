@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import PostureStandardControl from '../components/PostureStandardControl';
 import { sessionClient, type LocalSessionRecord } from '../services/sessionClient';
 import { serialClient } from '../services/serialClient';
 import { postureDetector } from '../services/poseDetection';
@@ -61,13 +62,13 @@ export default function MainMonitor() {
   const [performanceMode, setPerformanceMode] = useState<PerformanceMode>('default');
   const [postureStandard, setPostureStandard] =
     useState<PostureStandard>(DEFAULT_POSTURE_STANDARD);
+  const [rankingMode, setRankingMode] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationRef = useRef<number | null>(null);
   const lastProcessTimeRef = useRef(0);
   const intervalRef = useRef<number | null>(null);
-  const rankingMode = false;
   const effectivePostureStandard = getEffectivePostureStandard(postureStandard, rankingMode);
 
   const statusLabel: Record<PostureState, string> = useMemo(
@@ -134,6 +135,11 @@ export default function MainMonitor() {
       box.height * canvas.height,
     );
   }, [runtime.state]);
+
+  const handlePostureStandardChange = async (next: PostureStandard) => {
+    setPostureStandard(next);
+    await settingsClient.update({ posture_standard: next });
+  };
 
   const startSession = async () => {
     const id = crypto.randomUUID();
@@ -350,6 +356,27 @@ export default function MainMonitor() {
             </p>
           </div>
         </div>
+
+        <PostureStandardControl
+          value={effectivePostureStandard}
+          disabled={rankingMode}
+          note={
+            rankingMode
+              ? 'Ranking sessions use the default posture standard for fairness.'
+              : 'Adjust how quickly TurtleGuard marks forward-head posture.'
+          }
+          onChange={handlePostureStandardChange}
+        />
+
+        <label className="flex items-center gap-2 rounded-lg border border-[#2C2C2A]/10 bg-white p-4 text-sm">
+          <input
+            type="checkbox"
+            checked={rankingMode}
+            onChange={(event) => setRankingMode(event.target.checked)}
+            className="h-4 w-4 accent-[#2E7D63]"
+          />
+          Ranking mode fairness check
+        </label>
 
         <label className="block rounded-lg border border-[#2C2C2A]/10 bg-white p-4">
           <span className="mb-2 block text-sm text-[#2C2C2A]/50">성능 모드</span>
