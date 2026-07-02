@@ -1,4 +1,5 @@
 import { FilesetResolver, FaceDetector, Detection } from '@mediapipe/tasks-vision';
+import { getPostureStandardConfig, type PostureStandard } from './postureStandard';
 
 export interface PostureResult {
   isBadPosture: boolean;
@@ -65,7 +66,11 @@ export class PostureDetector {
     }, 3000); // 3 seconds calibration
   }
 
-  detectPosture(video: HTMLVideoElement, timestamp: number): PostureResult | null {
+  detectPosture(
+    video: HTMLVideoElement,
+    timestamp: number,
+    postureStandard: PostureStandard = 'default',
+  ): PostureResult | null {
     if (!this.faceDetector) return null;
 
     const result = this.faceDetector.detectForVideo(video, timestamp);
@@ -102,11 +107,10 @@ export class PostureDetector {
       }
     }
     
-    // Threshold: if scale increases by 8% from baseline, assume bad posture (head moved closer to monitor)
-    const scaleThreshold = this.baselineScale * 1.08;
-    
-    // Auxiliary threshold: if face dropped significantly down
-    const yThreshold = this.baselineY + (boundingBox.height * 0.5); 
+    const standardConfig = getPostureStandardConfig(postureStandard);
+    const scaleThreshold = this.baselineScale * (1 + standardConfig.scaleIncreaseRatio);
+    const yThreshold =
+      this.baselineY + boundingBox.height * standardConfig.yDropFaceHeightMultiplier;
     
     const isBadPosture = this.emaScale > scaleThreshold || currentY > yThreshold;
     

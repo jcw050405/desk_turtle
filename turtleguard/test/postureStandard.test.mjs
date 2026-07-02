@@ -46,3 +46,11 @@ test('ranking mode always forces default standard', () => {
   assert.equal(getEffectivePostureStandard('very_relaxed', false), 'very_relaxed');
   assert.equal(getEffectivePostureStandard('very_relaxed', true), 'default');
 });
+
+test('relaxed standards require more deviation than sensitive standards', () => {
+  const sensitive = getPostureStandardConfig('sensitive');
+  const relaxed = getPostureStandardConfig('relaxed');
+
+  assert.ok(relaxed.scaleIncreaseRatio > sensitive.scaleIncreaseRatio);
+  assert.ok(relaxed.yDropFaceHeightMultiplier > sensitive.yDropFaceHeightMultiplier);
+});

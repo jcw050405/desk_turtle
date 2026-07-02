@@ -2,6 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sessionClient, type LocalSessionRecord } from '../services/sessionClient';
 import { serialClient } from '../services/serialClient';
 import { postureDetector } from '../services/poseDetection';
+import { settingsClient } from '../services/settingsClient';
+import {
+  DEFAULT_POSTURE_STANDARD,
+  getEffectivePostureStandard,
+  type PostureStandard,
+} from '../services/postureStandard';
 import {
   addElapsedSecond,
   initialPostureRuntime,
@@ -53,12 +59,16 @@ export default function MainMonitor() {
   const [startedAt, setStartedAt] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [performanceMode, setPerformanceMode] = useState<PerformanceMode>('default');
+  const [postureStandard, setPostureStandard] =
+    useState<PostureStandard>(DEFAULT_POSTURE_STANDARD);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationRef = useRef<number | null>(null);
   const lastProcessTimeRef = useRef(0);
   const intervalRef = useRef<number | null>(null);
+  const rankingMode = false;
+  const effectivePostureStandard = getEffectivePostureStandard(postureStandard, rankingMode);
 
   const statusLabel: Record<PostureState, string> = useMemo(
     () => ({
@@ -86,6 +96,12 @@ export default function MainMonitor() {
     if (context && canvasRef.current) {
       context.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     }
+  }, []);
+
+  useEffect(() => {
+    void settingsClient.get().then((settings) => {
+      setPostureStandard(settings.posture_standard);
+    });
   }, []);
 
   const drawDetection = useCallback((boundingBox: unknown) => {
@@ -192,7 +208,11 @@ export default function MainMonitor() {
       timestamp - lastProcessTimeRef.current >= PERFORMANCE_INTERVAL_MS[performanceMode] &&
       videoRef.current.readyState >= 2
     ) {
-      const result = postureDetector.detectPosture(videoRef.current, timestamp);
+      const result = postureDetector.detectPosture(
+        videoRef.current,
+        timestamp,
+        effectivePostureStandard,
+      );
 
       setRuntime((current) => {
         if (current.state === 'CALIBRATING') {
@@ -221,7 +241,7 @@ export default function MainMonitor() {
     }
 
     animationRef.current = requestAnimationFrame(detectLoop);
-  }, [drawDetection, performanceMode, sessionId]);
+  }, [drawDetection, effectivePostureStandard, performanceMode, sessionId]);
 
   useEffect(() => {
     if (!sessionId) {
