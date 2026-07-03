@@ -1,4 +1,5 @@
 const OFFICIAL_ARDUINO_VENDOR_IDS = new Set(['2341', '2A03']);
+const ESPRESSIF_VENDOR_IDS = new Set(['303A']);
 const COMMON_USB_SERIAL_VENDOR_IDS = new Set(['1A86', '10C4', '0403']);
 const TEXT_DESCRIPTOR_FIELDS = [
   'path',
@@ -27,6 +28,19 @@ export function scorePort(port, lastSuccessfulPath) {
 
   if (searchText.includes('arduino')) {
     return 100;
+  }
+
+  if (ESPRESSIF_VENDOR_IDS.has(vendorId)) {
+    return 90;
+  }
+
+  if (
+    searchText.includes('espressif') ||
+    searchText.includes('esp32') ||
+    searchText.includes('usb jtag/serial') ||
+    searchText.includes('usb jtag serial')
+  ) {
+    return 90;
   }
 
   if (COMMON_USB_SERIAL_VENDOR_IDS.has(vendorId)) {

@@ -54,6 +54,29 @@ test('scorePort recognizes CH340 style adapters', () => {
   assert.equal(scorePort(port, null), 80);
 });
 
+test('scorePort recognizes ESP32-C3 native USB devices', () => {
+  const port = {
+    path: 'COM12',
+    vendorId: '303A',
+    productId: '1001',
+    manufacturer: 'Espressif',
+    product: 'USB JTAG/serial debug unit',
+  };
+
+  assert.equal(scorePort(port, null), 90);
+});
+
+test('scorePort recognizes ESP32-C3 descriptor text', () => {
+  const port = {
+    path: 'COM13',
+    vendorId: '9999',
+    manufacturer: 'Unknown',
+    friendlyName: 'ESP32-C3 USB JTAG/serial (COM13)',
+  };
+
+  assert.equal(scorePort(port, null), 90);
+});
+
 test('scorePort keeps known chip vendor id stronger than last successful path', () => {
   const port = {
     path: 'COM5',
@@ -98,6 +121,18 @@ test('sortPortsByArduinoLikelihood orders highest score first', () => {
   const sorted = sortPortsByArduinoLikelihood(ports, null);
 
   assert.deepEqual(sorted.map((entry) => entry.path), ['COM3', 'COM5', 'COM9']);
+});
+
+test('sortPortsByArduinoLikelihood ranks ESP32-C3 above generic USB serial adapters', () => {
+  const ports = [
+    { path: 'COM9', manufacturer: 'Bluetooth' },
+    { path: 'COM5', manufacturer: 'USB-SERIAL CH340', vendorId: '1A86' },
+    { path: 'COM12', manufacturer: 'Espressif', vendorId: '303A' },
+  ];
+
+  const sorted = sortPortsByArduinoLikelihood(ports, null);
+
+  assert.deepEqual(sorted.map((entry) => entry.path), ['COM12', 'COM5', 'COM9']);
 });
 
 test('sortPortsByArduinoLikelihood uses path order as a deterministic tie-break', () => {
