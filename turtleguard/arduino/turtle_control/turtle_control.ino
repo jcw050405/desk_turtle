@@ -1,6 +1,6 @@
 #if defined(ARDUINO_ARCH_ESP32)
 #include <ESP32Servo.h>
-const int servoPin = 4;
+const int servoPin = 2;
 #else
 #include <Servo.h>
 const int servoPin = 9;
@@ -16,8 +16,7 @@ void setup() {
 #if defined(ARDUINO_ARCH_ESP32)
   ESP32PWM::allocateTimer(0);
   ESP32PWM::allocateTimer(1);
-  ESP32PWM::allocateTimer(2);
-  ESP32PWM::allocateTimer(3);
+
   turtleServo.setPeriodHertz(50);
   turtleServo.attach(servoPin, 500, 2400);
 #else
@@ -30,6 +29,7 @@ void setup() {
 void loop() {
   if (Serial.available() > 0) {
     char command = Serial.read();
+
     if (command == '1') {
       turtleServo.write(badAngle);
     } else if (command == '0') {
