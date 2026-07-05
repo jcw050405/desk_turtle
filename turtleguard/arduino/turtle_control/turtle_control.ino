@@ -1,6 +1,6 @@
 #if defined(ARDUINO_ARCH_ESP32)
 #include <ESP32Servo.h>
-const int servoPin = 2;
+const int servoPin = 3;
 #else
 #include <Servo.h>
 const int servoPin = 9;
