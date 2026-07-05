@@ -7,17 +7,44 @@ const int servoPin = 9;
 #endif
 
 Servo turtleServo;
-const int goodAngle = 0;
-const int badAngle = 90;
+const int goodAngle = 10;
+const int badAngle = 80;
+const int stepDegrees = 2;
+const int stepDelayMs = 12;
+int currentAngle = goodAngle;
+
+void moveServoTo(int targetAngle) {
+  targetAngle = constrain(targetAngle, goodAngle, badAngle);
+
+  if (targetAngle == currentAngle) {
+    return;
+  }
+
+  const int direction = targetAngle > currentAngle ? 1 : -1;
+
+  while (currentAngle != targetAngle) {
+    currentAngle += direction * stepDegrees;
+
+    if ((direction > 0 && currentAngle > targetAngle) ||
+        (direction < 0 && currentAngle < targetAngle)) {
+      currentAngle = targetAngle;
+    }
+
+    turtleServo.write(currentAngle);
+    delay(stepDelayMs);
+  }
+}
 
 void moveGood() {
-  turtleServo.write(goodAngle);
-  Serial.println("ACK:GOOD");
+  moveServoTo(goodAngle);
+  Serial.print("ACK:GOOD:");
+  Serial.println(currentAngle);
 }
 
 void moveBad() {
-  turtleServo.write(badAngle);
-  Serial.println("ACK:BAD");
+  moveServoTo(badAngle);
+  Serial.print("ACK:BAD:");
+  Serial.println(currentAngle);
 }
 
 void handleCommand(char command) {
@@ -53,7 +80,8 @@ void setup() {
   turtleServo.attach(servoPin);
 #endif
 
-  turtleServo.write(goodAngle);
+  currentAngle = goodAngle;
+  turtleServo.write(currentAngle);
   Serial.println("READY:TURTLE");
 }
 
