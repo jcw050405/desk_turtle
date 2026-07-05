@@ -12,6 +12,7 @@ test('disconnect succeeds cleanly when there is no active port', async () => {
     connected: false,
     path: null,
     lastError: null,
+    lastReceived: null,
   });
 });
 
@@ -45,6 +46,7 @@ test('disconnect waits for close and clears the port on success', async () => {
     connected: false,
     path: null,
     lastError: null,
+    lastReceived: null,
   });
 });
 
@@ -74,5 +76,48 @@ test('disconnect preserves the live port and error details when close fails', as
     connected: true,
     path: 'COM9',
     lastError: 'COM port is still busy',
+    lastReceived: null,
   });
+});
+
+test('sendPostureState writes newline-terminated ESP32-C3 commands', async () => {
+  const manager = new SerialManager({ commandTerminator: '\n' });
+  const writes = [];
+
+  manager.port = {
+    write(value, callback) {
+      writes.push(value);
+      callback();
+    },
+    drain(callback) {
+      callback();
+    },
+  };
+  manager.status = {
+    connected: true,
+    path: 'COM6',
+    lastError: null,
+    lastReceived: null,
+  };
+
+  const result = await manager.sendPostureState('BAD');
+
+  assert.deepEqual(writes, ['1\n']);
+  assert.deepEqual(result, {
+    ok: true,
+    value: '1',
+    sent: true,
+    connected: true,
+    path: 'COM6',
+    lastError: null,
+    lastReceived: null,
+  });
+});
+
+test('handlePortData keeps the latest non-empty device response', () => {
+  const manager = new SerialManager();
+
+  manager.handlePortData(Buffer.from('READY:TURTLE\nACK:BAD\n'));
+
+  assert.equal(manager.getStatus().lastReceived, 'ACK:BAD');
 });

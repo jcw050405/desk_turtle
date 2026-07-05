@@ -9,6 +9,12 @@ function toErrorMessage(error) {
   return String(error ?? 'Unknown serial error');
 }
 
+function delay(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 export class SerialManager {
   constructor(options = {}) {
     this.getLastPath =
@@ -16,11 +22,15 @@ export class SerialManager {
     this.setLastPath =
       typeof options.setLastPath === 'function' ? options.setLastPath : null;
     this.baudRate = options.baudRate ?? 9600;
+    this.readyDelayMs = options.readyDelayMs ?? 1500;
+    this.commandTerminator = options.commandTerminator ?? '\n';
     this.port = null;
+    this.readBuffer = '';
     this.status = {
       connected: false,
       path: null,
       lastError: null,
+      lastReceived: null,
     };
     this.disconnectPromise = null;
   }
@@ -80,6 +90,10 @@ export class SerialManager {
       this.handlePortError(port, error);
     });
 
+    port.on('data', (chunk) => {
+      this.handlePortData(chunk);
+    });
+
     port.on('close', () => {
       if (this.port === port) {
         this.port = null;
@@ -87,6 +101,7 @@ export class SerialManager {
           connected: false,
           path: null,
           lastError: this.status.lastError,
+          lastReceived: this.status.lastReceived,
         };
       }
     });
@@ -124,7 +139,12 @@ export class SerialManager {
       connected: true,
       path,
       lastError: null,
+      lastReceived: this.status.lastReceived ?? null,
     };
+
+    if (this.readyDelayMs > 0) {
+      await delay(this.readyDelayMs);
+    }
 
     if (this.setLastPath) {
       try {
@@ -171,6 +191,7 @@ export class SerialManager {
       connected: this.status.connected,
       path: this.status.path,
       lastError: this.status.lastError,
+      lastReceived: this.status.lastReceived ?? null,
     };
   }
 
@@ -185,7 +206,26 @@ export class SerialManager {
       connected: false,
       path: null,
       lastError: message,
+      lastReceived: this.status.lastReceived ?? null,
     };
+  }
+
+  handlePortData(chunk) {
+    this.readBuffer += chunk.toString('utf8');
+
+    const lines = this.readBuffer.split(/\r?\n/);
+    this.readBuffer = lines.pop() ?? '';
+
+    for (const line of lines) {
+      const message = line.trim();
+
+      if (message) {
+        this.status = {
+          ...this.status,
+          lastReceived: message,
+        };
+      }
+    }
   }
 
   async writeValue(value) {
@@ -200,9 +240,11 @@ export class SerialManager {
       };
     }
 
+    const command = `${value}${this.commandTerminator}`;
+
     try {
       await new Promise((resolve, reject) => {
-        this.port.write(value, (error) => {
+        this.port.write(command, (error) => {
           if (error) {
             reject(error);
             return;
@@ -234,6 +276,7 @@ export class SerialManager {
     return {
       ok: true,
       value,
+      sent: true,
       ...this.getStatus(),
     };
   }
@@ -250,6 +293,7 @@ export class SerialManager {
         connected: false,
         path: null,
         lastError: null,
+        lastReceived: this.status.lastReceived ?? null,
       };
 
       return {
@@ -281,6 +325,7 @@ export class SerialManager {
         connected: hasLiveHandle,
         path: hasLiveHandle ? port.path ?? this.status.path : null,
         lastError: message,
+        lastReceived: this.status.lastReceived ?? null,
       };
 
       return {
@@ -298,6 +343,7 @@ export class SerialManager {
       connected: false,
       path: null,
       lastError: null,
+      lastReceived: this.status.lastReceived ?? null,
     };
 
     return {

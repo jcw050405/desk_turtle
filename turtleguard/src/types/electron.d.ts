@@ -33,6 +33,7 @@ export type TurtleSerialStatus = {
   connected: boolean;
   path: string | null;
   lastError?: string | null;
+  lastReceived?: string | null;
   message?: string;
   reason?: string;
 };
