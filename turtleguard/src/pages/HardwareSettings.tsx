@@ -42,6 +42,29 @@ export default function HardwareSettings() {
     setMessage('연결을 해제했습니다.');
   };
 
+  const runServoTest = async (position: 'extended' | 'neutral') => {
+    const label = position === 'extended' ? 'BAD / extended' : 'GOOD / neutral';
+    setMessage(`Sending ${label} command...`);
+
+    const result = await serialClient.testServo(position);
+    const nextStatus = await serialClient.getStatus();
+    setStatus(nextStatus);
+
+    if (result.ok) {
+      setMessage(
+        `Servo command confirmed: ${result.lastReceived ?? nextStatus.lastReceived ?? result.value}`,
+      );
+      return;
+    }
+
+    setMessage(
+      result.message ??
+        `Servo command was sent, but no firmware ACK was received. Last response: ${
+          nextStatus.lastReceived ?? 'none'
+        }`,
+    );
+  };
+
   useEffect(() => {
     void refresh();
     void serialClient.getStatus().then(setStatus);
@@ -95,14 +118,16 @@ export default function HardwareSettings() {
             연결 해제
           </button>
           <button
-            onClick={() => serialClient.testServo('extended')}
+            onClick={() => runServoTest('extended')}
+            disabled={!status.connected}
             className="rounded-md border px-4 py-2"
           >
             <Zap className="mr-2 inline h-4 w-4" />
             목 내밀기 테스트
           </button>
           <button
-            onClick={() => serialClient.testServo('neutral')}
+            onClick={() => runServoTest('neutral')}
+            disabled={!status.connected}
             className="rounded-md border px-4 py-2"
           >
             중립 위치
@@ -110,6 +135,11 @@ export default function HardwareSettings() {
         </div>
 
         {message && <p className="mt-4 text-sm text-[#2C2C2A]/70">{message}</p>}
+        {status.lastReceived && (
+          <p className="mt-2 font-mono text-xs text-[#2C2C2A]/50">
+            Last device response: {status.lastReceived}
+          </p>
+        )}
       </div>
     </section>
   );

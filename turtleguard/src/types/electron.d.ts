@@ -44,6 +44,7 @@ export type TurtleSerialResult<TValue = string> = TurtleSerialStatus & {
   message?: string;
   reason?: string;
   sent?: boolean;
+  confirmed?: boolean;
   signal?: boolean;
 };
 

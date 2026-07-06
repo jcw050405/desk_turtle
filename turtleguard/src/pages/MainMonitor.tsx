@@ -84,6 +84,7 @@ export default function MainMonitor() {
   const animationRef = useRef<number | null>(null);
   const lastProcessTimeRef = useRef(0);
   const intervalRef = useRef<number | null>(null);
+  const lastSentHardwareStateRef = useRef<'GOOD' | 'BAD' | null>(null);
   const effectivePostureStandard = getEffectivePostureStandard(postureStandard, rankingMode);
   const sessionMetadata = useMemo(
     () => ({
@@ -165,11 +166,28 @@ export default function MainMonitor() {
     await settingsClient.update({ posture_standard: next });
   };
 
+  const sendHardwareState = useCallback(
+    async (state: 'GOOD' | 'BAD', force = false) => {
+      if (!force && lastSentHardwareStateRef.current === state) {
+        return;
+      }
+
+      lastSentHardwareStateRef.current = state;
+      const result = await serialClient.sendPostureState(state);
+
+      if (!result.ok) {
+        setMessage(`Hardware command failed: ${result.message ?? result.lastError ?? 'unknown error'}`);
+      }
+    },
+    [],
+  );
+
   const startSession = async () => {
     const id = crypto.randomUUID();
     const start = new Date().toISOString();
     const initial = { ...initialPostureRuntime(), state: 'CALIBRATING' as const };
 
+    lastSentHardwareStateRef.current = null;
     setSessionId(id);
     setStartedAt(start);
     setRuntime(initial);
@@ -177,7 +195,7 @@ export default function MainMonitor() {
     await sessionClient.saveDraft(
       makeSession(initialPostureRuntime(), id, start, null, null, sessionMetadata),
     );
-    await serialClient.sendPostureState('GOOD');
+    await sendHardwareState('GOOD', true);
 
     try {
       await postureDetector.initialize();
@@ -220,7 +238,7 @@ export default function MainMonitor() {
     intervalRef.current = null;
 
     cleanupCamera();
-    await serialClient.sendPostureState('GOOD');
+    await sendHardwareState('GOOD', true);
     const finished = makeSession(
       runtime,
       sessionId,
@@ -234,6 +252,7 @@ export default function MainMonitor() {
 
     setSessionId(null);
     setStartedAt(null);
+    lastSentHardwareStateRef.current = null;
     setRuntime(initialPostureRuntime());
     setMessage('세션을 종료했습니다.');
   };
@@ -272,7 +291,7 @@ export default function MainMonitor() {
           drawDetection(result.detection.boundingBox);
         }
 
-        void serialClient.sendPostureState(next.state === 'BAD' ? 'BAD' : 'GOOD');
+        void sendHardwareState(next.state === 'BAD' ? 'BAD' : 'GOOD');
         return next;
       });
 
@@ -280,7 +299,7 @@ export default function MainMonitor() {
     }
 
     animationRef.current = requestAnimationFrame(detectLoop);
-  }, [drawDetection, effectivePostureStandard, performanceMode, sessionId]);
+  }, [drawDetection, effectivePostureStandard, performanceMode, sendHardwareState, sessionId]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -328,7 +347,7 @@ export default function MainMonitor() {
 
       const endedAt = new Date().toISOString();
       cleanupCamera();
-      void serialClient.sendPostureState('GOOD');
+      void sendHardwareState('GOOD', true);
       const finished = makeSession(
         runtime,
         sessionId,
@@ -342,10 +361,20 @@ export default function MainMonitor() {
       );
       setSessionId(null);
       setStartedAt(null);
+      lastSentHardwareStateRef.current = null;
       setRuntime(initialPostureRuntime());
       setMessage('컴퓨터 절전 신호로 세션을 안전하게 종료했습니다.');
     });
-  }, [cleanupCamera, postureStandard, rankingMode, runtime, sessionId, sessionMetadata, startedAt]);
+  }, [
+    cleanupCamera,
+    postureStandard,
+    rankingMode,
+    runtime,
+    sendHardwareState,
+    sessionId,
+    sessionMetadata,
+    startedAt,
+  ]);
 
   return (
     <section className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.6fr)]">

@@ -107,6 +107,7 @@ test('sendPostureState writes newline-terminated ESP32-C3 commands', async () =>
     ok: true,
     value: '1',
     sent: true,
+    confirmed: false,
     connected: true,
     path: 'COM6',
     lastError: null,
@@ -117,7 +118,64 @@ test('sendPostureState writes newline-terminated ESP32-C3 commands', async () =>
 test('handlePortData keeps the latest non-empty device response', () => {
   const manager = new SerialManager();
 
-  manager.handlePortData(Buffer.from('READY:TURTLE\nACK:BAD\n'));
+  manager.handlePortData(Buffer.from('READY:TURTLE\nACK:BAD:80\n'));
 
-  assert.equal(manager.getStatus().lastReceived, 'ACK:BAD');
+  assert.equal(manager.getStatus().lastReceived, 'ACK:BAD:80');
+});
+
+test('testServo confirms ESP32-C3 firmware ACK responses', async () => {
+  const manager = new SerialManager({ responseTimeoutMs: 50 });
+  const writes = [];
+
+  manager.port = {
+    write(value, callback) {
+      writes.push(value);
+      setTimeout(() => manager.handlePortData(Buffer.from('ACK:BAD:80\n')), 0);
+      callback();
+    },
+    drain(callback) {
+      callback();
+    },
+  };
+  manager.status = {
+    connected: true,
+    path: 'COM6',
+    lastError: null,
+    lastReceived: null,
+  };
+
+  const result = await manager.testServo('extended');
+
+  assert.deepEqual(writes, ['1\n']);
+  assert.equal(result.ok, true);
+  assert.equal(result.confirmed, true);
+  assert.equal(result.lastReceived, 'ACK:BAD:80');
+});
+
+test('testServo reports missing firmware ACK responses', async () => {
+  const manager = new SerialManager({ responseTimeoutMs: 1 });
+
+  manager.port = {
+    write(_value, callback) {
+      callback();
+    },
+    drain(callback) {
+      callback();
+    },
+  };
+  manager.status = {
+    connected: true,
+    path: 'COM6',
+    lastError: null,
+    lastReceived: null,
+  };
+
+  const result = await manager.testServo('neutral');
+
+  assert.equal(result.ok, false);
+  assert.equal(result.confirmed, false);
+  assert.equal(
+    result.message,
+    'Command was sent, but TurtleGuard firmware did not acknowledge it',
+  );
 });

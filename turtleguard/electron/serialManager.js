@@ -24,8 +24,10 @@ export class SerialManager {
     this.baudRate = options.baudRate ?? 9600;
     this.readyDelayMs = options.readyDelayMs ?? 1500;
     this.commandTerminator = options.commandTerminator ?? '\n';
+    this.responseTimeoutMs = options.responseTimeoutMs ?? 1000;
     this.port = null;
     this.readBuffer = '';
+    this.pendingResponses = [];
     this.status = {
       connected: false,
       path: null,
@@ -182,8 +184,22 @@ export class SerialManager {
 
   async testServo(position) {
     const postureState = position === 'extended' ? 'BAD' : 'GOOD';
+    const value = postureState === 'BAD' ? '1' : '0';
+    const expectedAck = postureState === 'BAD' ? 'ACK:BAD' : 'ACK:GOOD';
+    const result = await this.writeValue(value, {
+      expectedResponsePrefixes: [expectedAck],
+      responseTimeoutMs: this.responseTimeoutMs,
+    });
 
-    return this.sendPostureState(postureState);
+    if (result.ok && !result.confirmed) {
+      return {
+        ...result,
+        ok: false,
+        message: 'Command was sent, but TurtleGuard firmware did not acknowledge it',
+      };
+    }
+
+    return result;
   }
 
   getStatus() {
@@ -224,11 +240,44 @@ export class SerialManager {
           ...this.status,
           lastReceived: message,
         };
+        this.resolvePendingResponses(message);
       }
     }
   }
 
-  async writeValue(value) {
+  waitForResponse(prefixes, timeoutMs) {
+    return new Promise((resolve) => {
+      const entry = {
+        prefixes,
+        resolve,
+        timeout: null,
+      };
+
+      entry.timeout = setTimeout(() => {
+        this.pendingResponses = this.pendingResponses.filter((candidate) => candidate !== entry);
+        resolve(null);
+      }, timeoutMs);
+
+      this.pendingResponses.push(entry);
+    });
+  }
+
+  resolvePendingResponses(message) {
+    const matched = this.pendingResponses.filter((entry) =>
+      entry.prefixes.some((prefix) => message.startsWith(prefix)),
+    );
+
+    for (const entry of matched) {
+      clearTimeout(entry.timeout);
+      entry.resolve(message);
+    }
+
+    if (matched.length > 0) {
+      this.pendingResponses = this.pendingResponses.filter((entry) => !matched.includes(entry));
+    }
+  }
+
+  async writeValue(value, options = {}) {
     if (!this.port || !this.status.connected) {
       const message = 'Serial port is not connected';
 
@@ -241,6 +290,18 @@ export class SerialManager {
     }
 
     const command = `${value}${this.commandTerminator}`;
+    let responsePromise = null;
+
+    if (Array.isArray(options.expectedResponsePrefixes)) {
+      this.status = {
+        ...this.status,
+        lastReceived: null,
+      };
+      responsePromise = this.waitForResponse(
+        options.expectedResponsePrefixes,
+        options.responseTimeoutMs ?? this.responseTimeoutMs,
+      );
+    }
 
     try {
       await new Promise((resolve, reject) => {
@@ -273,10 +334,13 @@ export class SerialManager {
       };
     }
 
+    const response = responsePromise ? await responsePromise : null;
+
     return {
       ok: true,
       value,
       sent: true,
+      confirmed: Boolean(response),
       ...this.getStatus(),
     };
   }
