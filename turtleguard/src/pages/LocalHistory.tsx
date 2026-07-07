@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getFriendlySyncStatus } from '../services/onboardingStatus';
 import { sessionClient, type LocalSessionRecord } from '../services/sessionClient';
 import { retryPendingSession } from '../services/sessionSync';
 
@@ -31,8 +32,8 @@ export default function LocalHistory() {
       await refreshSessions();
       setSyncMessage(
         retried.sync_status === 'synced'
-          ? 'Pending session synced successfully.'
-          : 'Sync is still pending. Check Supabase setup or network, then try again.',
+          ? 'Session synced to rankings.'
+          : 'Session is still waiting to sync. Check Supabase setup or network, then try again.',
       );
     } finally {
       setRetryingId(null);
@@ -73,7 +74,32 @@ export default function LocalHistory() {
                   <td className="p-3">{formatSeconds(session.bad_posture_seconds)}</td>
                   <td className="p-3">{formatSeconds(session.away_seconds)}</td>
                   <td className="p-3">{session.warning_count}</td>
-                  <td className="p-3">{session.sync_status ?? 'local_only'}</td>
+                  <td className="p-3">
+                    {(() => {
+                      const syncStatus = getFriendlySyncStatus(
+                        session.sync_status ?? 'local_only',
+                      );
+
+                      return (
+                        <div>
+                          <span
+                            className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                              syncStatus.tone === 'success'
+                                ? 'bg-[#2E7D63]/10 text-[#2E7D63]'
+                                : syncStatus.tone === 'warning'
+                                  ? 'bg-[#D9A441]/10 text-[#7A5A12]'
+                                  : 'bg-[#2C2C2A]/5 text-[#2C2C2A]/60'
+                            }`}
+                          >
+                            {syncStatus.label}
+                          </span>
+                          <p className="mt-1 max-w-[220px] text-xs leading-5 text-[#2C2C2A]/50">
+                            {syncStatus.detail}
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </td>
                   <td className="p-3">
                     {session.sync_status === 'pending_sync' ? (
                       <button
