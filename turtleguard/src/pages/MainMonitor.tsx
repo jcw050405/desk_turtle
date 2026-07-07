@@ -25,6 +25,7 @@ const PERFORMANCE_INTERVAL_MS: Record<PerformanceMode, number> = {
   default: 500,
   accuracy: 300,
 };
+const POSTURE_TRANSITION_HOLD_MS = 1200;
 
 interface SessionMetadata {
   groupId: string | null;
@@ -181,6 +182,18 @@ export default function MainMonitor() {
     },
     [],
   );
+  const statusHelp: Record<PostureState, string> = useMemo(
+    () => ({
+      IDLE: '세션을 시작하면 카메라 권한을 요청하고 기준 자세를 측정합니다.',
+      CALIBRATING: '정면을 보고 허리를 편 상태로 3초간 가만히 있어 주세요.',
+      GOOD: '바른 자세가 안정적으로 감지되고 있습니다.',
+      BAD: '앞으로 숙인 자세가 1초 이상 유지되어 BAD로 판정했습니다.',
+      AWAY: '얼굴이 보이지 않습니다. 자리 비움 시간으로 기록됩니다.',
+      PAUSED: '세션이 일시정지되었습니다.',
+      ERROR: '카메라 권한, 장치 연결, 얼굴 위치를 확인한 뒤 다시 시작하세요.',
+    }),
+    [],
+  );
 
   const startSession = async () => {
     const id = crypto.randomUUID();
@@ -191,7 +204,7 @@ export default function MainMonitor() {
     setSessionId(id);
     setStartedAt(start);
     setRuntime(initial);
-    setMessage('카메라를 준비하고 기준 자세를 측정합니다.');
+    setMessage('카메라를 준비합니다. 권한 팝업이 뜨면 허용을 선택하세요.');
     await sessionClient.saveDraft(
       makeSession(initialPostureRuntime(), id, start, null, null, sessionMetadata),
     );
@@ -213,17 +226,23 @@ export default function MainMonitor() {
       postureDetector.startCalibration((result) => {
         if (!result.ok) {
           setRuntime((current) => ({ ...current, state: 'ERROR' }));
-          setMessage('기준 자세를 잡지 못했습니다. 얼굴이 보이도록 앉은 뒤 다시 시작하세요.');
+          setMessage('기준 자세를 잡지 못했습니다. 밝은 곳에서 얼굴 전체가 보이도록 앉은 뒤 다시 시작하세요.');
           return;
         }
 
         setRuntime((current) => ({ ...current, state: 'GOOD' }));
-        setMessage('기준 자세가 등록되었습니다.');
+        setMessage('기준 자세가 등록되었습니다. 순간 흔들림은 1.2초 안정화 후 반영됩니다.');
       });
-    } catch {
+    } catch (caught) {
       cleanupCamera();
       setRuntime((current) => ({ ...current, state: 'ERROR' }));
-      setMessage('카메라를 시작하지 못했습니다. 권한과 장치 상태를 확인하세요.');
+      const errorName =
+        caught instanceof DOMException || caught instanceof Error ? caught.name : '';
+      setMessage(
+        errorName === 'NotAllowedError'
+          ? '카메라 권한이 거부되었습니다. 브라우저와 Windows 개인정보 설정에서 카메라 접근을 허용하세요.'
+          : '카메라를 시작하지 못했습니다. 다른 앱이 카메라를 사용 중인지 확인하고 다시 시도하세요.',
+      );
     }
   };
 
@@ -285,6 +304,7 @@ export default function MainMonitor() {
           isBadPosture: Boolean(result?.isBadPosture),
           now: timestamp,
           awayGraceMs: 10_000,
+          transitionHoldMs: POSTURE_TRANSITION_HOLD_MS,
         });
 
         if (result?.detection.boundingBox) {
@@ -394,7 +414,12 @@ export default function MainMonitor() {
           />
           {runtime.state === 'IDLE' && (
             <div className="absolute inset-0 flex items-center justify-center text-sm text-white/60">
-              세션을 시작하면 카메라가 켜집니다.
+              세션을 시작하면 카메라 권한을 요청합니다.
+            </div>
+          )}
+          {runtime.state === 'CALIBRATING' && (
+            <div className="absolute inset-x-4 bottom-4 rounded-md bg-black/70 p-3 text-center text-sm text-white">
+              정면을 보고 바른 자세로 3초간 유지하세요.
             </div>
           )}
         </div>
@@ -407,6 +432,7 @@ export default function MainMonitor() {
         <div className="rounded-lg border border-[#2C2C2A]/10 bg-white p-5">
           <p className="text-sm text-[#2C2C2A]/50">현재 상태</p>
           <p className="mt-1 text-3xl font-bold text-[#2C2C2A]">{statusLabel[runtime.state]}</p>
+          <p className="mt-2 text-sm text-[#2C2C2A]/60">{statusHelp[runtime.state]}</p>
         </div>
 
         <div className="rounded-lg border border-[#2C2C2A]/10 bg-white p-5">
