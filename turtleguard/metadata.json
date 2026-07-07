@@ -1,10 +1,8 @@
 {
   "name": "TurtleGuard",
-  "description": "IoT based forward head posture correction system with Web Serial API.",
+  "description": "Electron desktop posture monitor for webcam-based turtle neck detection, ESP32-C3 servo feedback, and Supabase group rankings.",
   "requestFramePermissions": [
     "camera"
   ],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "majorCapabilities": []
 }

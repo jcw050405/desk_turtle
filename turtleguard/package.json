@@ -2,7 +2,7 @@
   "name": "turtleguard",
   "productName": "TurtleGuard",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "A desktop posture monitor that connects camera-based turtle neck detection with Arduino hardware feedback.",
   "author": "jcw050405 <jcw050405@postech.ac.kr>",
   "type": "module",
@@ -51,5 +51,28 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.3"
+  },
+  "build": {
+    "appId": "com.jcw050405.turtleguard",
+    "productName": "TurtleGuard",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "electron/**/*",
+      "renderer-dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "artifactName": "TurtleGuard-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
