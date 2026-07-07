@@ -8,6 +8,54 @@ import type {
 
 const UNAVAILABLE_MESSAGE = 'Electron serial API is unavailable in this renderer';
 
+export type DeviceResponseDescription = {
+  title: string;
+  detail: string;
+  tone: 'success' | 'warning' | 'neutral';
+};
+
+export function describeDeviceResponse(
+  lastReceived?: string | null,
+): DeviceResponseDescription {
+  if (!lastReceived) {
+    return {
+      title: 'No firmware response yet',
+      detail: 'Run a servo test. If no ACK appears, close Arduino Serial Monitor and check the selected port.',
+      tone: 'warning',
+    };
+  }
+
+  if (lastReceived.startsWith('ACK:BAD:80')) {
+    return {
+      title: 'BAD command confirmed',
+      detail: 'Firmware moved the MG90S servo to 80 degrees on GPIO3.',
+      tone: 'success',
+    };
+  }
+
+  if (lastReceived.startsWith('ACK:GOOD:10')) {
+    return {
+      title: 'GOOD command confirmed',
+      detail: 'Firmware returned the MG90S servo to 10 degrees on GPIO3.',
+      tone: 'success',
+    };
+  }
+
+  if (lastReceived === 'READY:TURTLE') {
+    return {
+      title: 'Firmware ready',
+      detail: 'ESP32-C3 firmware is running and waiting for commands.',
+      tone: 'neutral',
+    };
+  }
+
+  return {
+    title: 'Device response received',
+    detail: lastReceived,
+    tone: 'neutral',
+  };
+}
+
 function getUnavailableStatus(
   overrides: Partial<TurtleSerialStatus> = {},
 ): TurtleSerialStatus {
