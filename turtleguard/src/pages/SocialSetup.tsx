@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { settingsClient } from '../services/settingsClient';
-import { socialClient } from '../services/socialClient';
+import { getFriendlySocialErrorMessage, socialClient } from '../services/socialClient';
 import type { TurtleSettings } from '../types/electron';
 
 export default function SocialSetup() {
@@ -27,7 +27,7 @@ export default function SocialSetup() {
     try {
       await action();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Social request failed.');
+      setError(getFriendlySocialErrorMessage(caught));
     } finally {
       setIsBusy(false);
     }
@@ -84,7 +84,7 @@ export default function SocialSetup() {
       <div className="rounded-lg border border-[#2C2C2A]/10 bg-white p-5">
         <h1 className="text-2xl font-bold text-[#2C2C2A]">Social setup</h1>
         <p className="mt-1 text-sm text-[#2C2C2A]/60">
-          Create a nickname profile, then create or join one group.
+          Save a profile, then create or join one group to enable rankings and sync.
         </p>
       </div>
 
@@ -113,6 +113,11 @@ export default function SocialSetup() {
         <p className="text-sm text-[#2C2C2A]/50">Current group</p>
         <p className="mt-1 text-xl font-bold text-[#2C2C2A]">
           {settings?.active_group_name ?? 'No group yet'}
+        </p>
+        <p className="mt-1 text-sm text-[#2C2C2A]/60">
+          {settings?.profile_id
+            ? 'Profile is ready. Group sessions can be uploaded when ranking mode is on.'
+            : 'Profile is missing. Save a nickname before creating or joining a group.'}
         </p>
         {settings?.active_group_invite_code && (
           <p className="mt-1 font-mono text-sm text-[#2E7D63]">

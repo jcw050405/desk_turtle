@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { settingsClient } from '../services/settingsClient';
-import { socialClient, type GroupRankingEntry } from '../services/socialClient';
+import {
+  getFriendlySocialErrorMessage,
+  socialClient,
+  type GroupRankingEntry,
+} from '../services/socialClient';
 
 type Period = 'daily' | 'weekly';
 
@@ -13,6 +17,7 @@ function formatSeconds(seconds: number) {
 export default function GroupRanking() {
   const [period, setPeriod] = useState<Period>('daily');
   const [groupId, setGroupId] = useState<string | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
   const [groupName, setGroupName] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [rankings, setRankings] = useState<GroupRankingEntry[]>([]);
@@ -22,27 +27,32 @@ export default function GroupRanking() {
   useEffect(() => {
     void settingsClient.get().then((settings) => {
       setGroupId(settings.last_selected_group_id);
+      setProfileId(settings.profile_id);
       setGroupName(settings.active_group_name);
       setInviteCode(settings.active_group_invite_code);
     });
   }, []);
 
-  useEffect(() => {
+  const loadRankings = useCallback(async () => {
     if (!groupId) {
       return;
     }
 
     setMessage('');
     setIsLoading(true);
-    void socialClient
-      .getRankings(groupId, period)
-      .then(setRankings)
-      .catch((caught) => {
-        setRankings([]);
-        setMessage(caught instanceof Error ? caught.message : 'Ranking load failed.');
-      })
-      .finally(() => setIsLoading(false));
+
+    try {
+      setRankings(await socialClient.getRankings(groupId, period));
+    } catch (caught) {
+      setMessage(getFriendlySocialErrorMessage(caught));
+    } finally {
+      setIsLoading(false);
+    }
   }, [groupId, period]);
+
+  useEffect(() => {
+    void loadRankings();
+  }, [loadRankings]);
 
   if (!groupId) {
     return (
@@ -60,19 +70,29 @@ export default function GroupRanking() {
         {inviteCode && <p className="mt-1 font-mono text-sm text-[#2E7D63]">{inviteCode}</p>}
       </div>
 
-      <div className="inline-flex rounded-lg border border-[#2C2C2A]/10 bg-white p-1">
-        {(['daily', 'weekly'] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setPeriod(value)}
-            className={`rounded-md px-4 py-2 text-sm font-semibold ${
-              period === value ? 'bg-[#2E7D63] text-white' : 'text-[#2C2C2A]/70'
-            }`}
-          >
-            {value === 'daily' ? 'Daily' : 'Weekly'}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="inline-flex rounded-lg border border-[#2C2C2A]/10 bg-white p-1">
+          {(['daily', 'weekly'] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setPeriod(value)}
+              className={`rounded-md px-4 py-2 text-sm font-semibold ${
+                period === value ? 'bg-[#2E7D63] text-white' : 'text-[#2C2C2A]/70'
+              }`}
+            >
+              {value === 'daily' ? 'Daily' : 'Weekly'}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => void loadRankings()}
+          disabled={isLoading}
+          className="rounded-md border border-[#2E7D63]/30 bg-white px-4 py-2 text-sm font-semibold text-[#2E7D63] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isLoading ? 'Refreshing...' : 'Refresh'}
+        </button>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-[#2C2C2A]/10 bg-white">
@@ -85,15 +105,31 @@ export default function GroupRanking() {
             </tr>
           </thead>
           <tbody>
-            {rankings.map((entry) => (
-              <tr key={entry.profile_id} className="border-t border-[#2C2C2A]/10">
-                <td className="p-3 font-bold text-[#2E7D63]">{entry.rank}</td>
-                <td className="p-3">{entry.nickname}</td>
-                <td className="p-3 font-mono">
-                  {formatSeconds(entry.total_good_posture_seconds)}
-                </td>
-              </tr>
-            ))}
+            {rankings.map((entry) => {
+              const isMine = Boolean(profileId && entry.profile_id === profileId);
+
+              return (
+                <tr
+                  key={entry.profile_id}
+                  className={`border-t border-[#2C2C2A]/10 ${
+                    isMine ? 'bg-[#2E7D63]/10 font-semibold' : ''
+                  }`}
+                >
+                  <td className="p-3 font-bold text-[#2E7D63]">{entry.rank}</td>
+                  <td className="p-3">
+                    {entry.nickname}
+                    {isMine && (
+                      <span className="ml-2 rounded-full bg-[#2E7D63] px-2 py-0.5 text-xs text-white">
+                        Me
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-3 font-mono">
+                    {formatSeconds(entry.total_good_posture_seconds)}
+                  </td>
+                </tr>
+              );
+            })}
             {!isLoading && rankings.length === 0 && (
               <tr>
                 <td colSpan={3} className="p-6 text-center text-[#2C2C2A]/50">
@@ -104,7 +140,7 @@ export default function GroupRanking() {
             {isLoading && (
               <tr>
                 <td colSpan={3} className="p-6 text-center text-[#2C2C2A]/50">
-                  Loading rankings...
+                  {rankings.length === 0 ? 'Loading rankings...' : 'Refreshing rankings...'}
                 </td>
               </tr>
             )}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { sessionClient, type LocalSessionRecord } from '../services/sessionClient';
+import { retryPendingSession } from '../services/sessionSync';
 
 function formatSeconds(seconds: number) {
   const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
@@ -10,10 +11,33 @@ function formatSeconds(seconds: number) {
 
 export default function LocalHistory() {
   const [sessions, setSessions] = useState<LocalSessionRecord[]>([]);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [syncMessage, setSyncMessage] = useState('');
 
   useEffect(() => {
     void sessionClient.list().then(setSessions);
   }, []);
+
+  const refreshSessions = async () => {
+    setSessions(await sessionClient.list());
+  };
+
+  const retrySync = async (session: LocalSessionRecord) => {
+    setRetryingId(session.id);
+    setSyncMessage('');
+
+    try {
+      const retried = await retryPendingSession(session);
+      await refreshSessions();
+      setSyncMessage(
+        retried.sync_status === 'synced'
+          ? 'Pending session synced successfully.'
+          : 'Sync is still pending. Check Supabase setup or network, then try again.',
+      );
+    } finally {
+      setRetryingId(null);
+    }
+  };
 
   return (
     <section className="space-y-6">
@@ -37,6 +61,7 @@ export default function LocalHistory() {
                 <th className="p-3">자리 비움</th>
                 <th className="p-3">경고</th>
                 <th className="p-3">Sync</th>
+                <th className="p-3">Retry</th>
                 <th className="p-3">상태</th>
               </tr>
             </thead>
@@ -50,6 +75,20 @@ export default function LocalHistory() {
                   <td className="p-3">{session.warning_count}</td>
                   <td className="p-3">{session.sync_status ?? 'local_only'}</td>
                   <td className="p-3">
+                    {session.sync_status === 'pending_sync' ? (
+                      <button
+                        type="button"
+                        onClick={() => retrySync(session)}
+                        disabled={retryingId === session.id}
+                        className="rounded-md border border-[#2E7D63]/30 px-3 py-1 text-xs font-semibold text-[#2E7D63] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {retryingId === session.id ? 'Retrying...' : 'Retry'}
+                      </button>
+                    ) : (
+                      <span className="text-[#2C2C2A]/40">-</span>
+                    )}
+                  </td>
+                  <td className="p-3">
                     {session.ended_at ? (session.ended_reason ?? 'ended') : '복구 필요'}
                   </td>
                 </tr>
@@ -58,6 +97,10 @@ export default function LocalHistory() {
           </table>
         )}
       </div>
+
+      {syncMessage && (
+        <p className="rounded-md bg-[#2E7D63]/10 p-3 text-sm text-[#2E7D63]">{syncMessage}</p>
+      )}
     </section>
   );
 }

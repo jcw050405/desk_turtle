@@ -27,6 +27,34 @@ function requireSupabase() {
   }
 }
 
+export function getFriendlySocialErrorMessage(caught: unknown): string {
+  const message =
+    caught instanceof Error
+      ? caught.message
+      : typeof caught === 'object' && caught && 'message' in caught
+        ? String(caught.message)
+        : '';
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes('supabase is not configured')) {
+    return 'Supabase setup is missing. Add your URL and anon key in .env, then restart TurtleGuard.';
+  }
+
+  if (normalized.includes('duplicate') || normalized.includes('unique constraint')) {
+    return 'That nickname, group, or invite code is already in use. Try a different value.';
+  }
+
+  if (normalized.includes('invite')) {
+    return 'Invite code was not accepted. Check the code and try again.';
+  }
+
+  if (normalized.includes('network') || normalized.includes('fetch')) {
+    return 'Could not reach Supabase. Check your internet connection and try again.';
+  }
+
+  return message || 'Social request failed. Check your Supabase setup and try again.';
+}
+
 export const socialClient = {
   async createProfile(nickname: string): Promise<TurtleProfile> {
     requireSupabase();
